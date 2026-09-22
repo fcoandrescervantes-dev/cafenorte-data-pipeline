@@ -4,7 +4,8 @@ import json
 import pandas as pd
 
 
-RAW_DATA_DIR = Path("data/raw")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 
 
 def validate_columns(df: pd.DataFrame, required_columns: list[str], source_name: str) -> None:
