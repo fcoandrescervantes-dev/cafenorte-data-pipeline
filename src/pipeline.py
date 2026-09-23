@@ -31,9 +31,20 @@ from src.reconcile import (
     build_inventory_fact,
 )
 
+from src.analytics import (
+    get_reference_date,
+    calculate_inventory_turnover,
+    calculate_stockout_events,
+    summarize_stockouts_by_store,
+    calculate_monthly_sales_growth,
+    calculate_negative_margin_products,
+    summarize_negative_margin_products,
+)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
 
 def main():
@@ -138,10 +149,60 @@ def main():
         dim_product,
     )
 
+        # -------------------------
+    # 8. Business analytics
     # -------------------------
-    # 8. Persist analytical model
+    reference_date = get_reference_date(
+        fact_sales,
+        fact_inventory,
+    )
+
+    # Q1 - Top 10 SKUs by inventory turnover
+    q1_inventory_turnover = calculate_inventory_turnover(
+        fact_sales,
+        fact_inventory,
+        dim_product,
+        reference_date,
+    )
+
+    # Q2 - Stockout events longer than 3 days
+    q2_stockout_events = calculate_stockout_events(
+        fact_inventory,
+        dim_product,
+        stores,
+        reference_date,
+    )
+
+    q2_stockouts_by_store = summarize_stockouts_by_store(
+        q2_stockout_events
+    )
+
+    # Q3 - Month-over-month sales growth by channel
+    q3_monthly_sales_growth = calculate_monthly_sales_growth(
+        fact_sales,
+        reference_date,
+    )
+
+    # Q4 - Products with negative aggregate margin by store
+    q4_negative_margin_by_store = calculate_negative_margin_products(
+        fact_sales,
+        dim_product,
+        stores,
+    )
+
+    q4_negative_margin_products = summarize_negative_margin_products(
+        q4_negative_margin_by_store
+    )
+    
+    # -------------------------
+    # 9. Persist analytical model
     # -------------------------
     PROCESSED_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    
+    OUTPUT_DIR.mkdir(
         parents=True,
         exist_ok=True,
     )
@@ -170,9 +231,42 @@ def main():
         PROCESSED_DIR / "fact_inventory.parquet",
         index=False,
     )
+    
+        # -------------------------
+    # 10. Persist business outputs
+    # -------------------------
+    q1_inventory_turnover.to_csv(
+        OUTPUT_DIR / "q1_inventory_turnover.csv",
+        index=False,
+    )
+
+    q2_stockout_events.to_csv(
+        OUTPUT_DIR / "q2_stockout_events.csv",
+        index=False,
+    )
+
+    q2_stockouts_by_store.to_csv(
+        OUTPUT_DIR / "q2_stockouts_by_store.csv",
+        index=False,
+    )
+
+    q3_monthly_sales_growth.to_csv(
+        OUTPUT_DIR / "q3_monthly_sales_growth.csv",
+        index=False,
+    )
+
+    q4_negative_margin_by_store.to_csv(
+        OUTPUT_DIR / "q4_negative_margin_by_store.csv",
+        index=False,
+    )
+
+    q4_negative_margin_products.to_csv(
+        OUTPUT_DIR / "q4_negative_margin_products.csv",
+        index=False,
+    )
 
     # -------------------------
-    # 9. Summary
+    # 11. Summary
     # -------------------------
     print("Pipeline completed successfully")
     print(f"Stores: {len(stores):,}")
@@ -189,6 +283,35 @@ def main():
     print(
         "Inventory snapshots with unknown stock: "
         f"{fact_inventory['is_missing'].sum():,}"
+    )
+    
+    print()
+    print("Business analytics generated")
+    print(f"Reference date: {reference_date.date()}")
+
+    print(
+        "Q1 - Inventory turnover SKUs: "
+        f"{len(q1_inventory_turnover):,}"
+    )
+
+    print(
+        "Q2 - Stockout events > 3 days: "
+        f"{len(q2_stockout_events):,}"
+    )
+
+    print(
+        "Q3 - Channel-month records: "
+        f"{len(q3_monthly_sales_growth):,}"
+    )
+
+    print(
+        "Q4 - Negative product-store combinations: "
+        f"{len(q4_negative_margin_by_store):,}"
+    )
+
+    print(
+        "Q4 - Negative-margin products: "
+        f"{len(q4_negative_margin_products):,}"
     )
 
 
