@@ -40,7 +40,7 @@ The analytical layer addresses four main business questions:
 
 ## Data Sources
 
-The pipeline processes four source files located under `data/raw/`.
+The pipeline integrates three primary operational sources: physical POS, the legacy ERP, and Shopify. The challenge data is provided through four input files under `data/raw/`, including `exchange_rates.csv` as a supporting reference dataset for foreign-currency conversion.
 
 | Source | Format | Purpose |
 |---|---|---|
@@ -532,6 +532,16 @@ The inventory turnover analysis evaluates the latest six-month inventory period:
 2025-10-01 to 2026-03-31
 ```
 
+For this challenge, inventory turnover is operationally defined as:
+
+```text
+physical units sold during the six-month period
+------------------------------------------------
+average daily physical-store inventory
+```
+
+Inventory snapshots represent physical stores and do not provide ecommerce inventory attribution, so ecommerce sales are excluded from this metric. Inventory is aggregated across stores by product and day before calculating the average daily inventory.
+
 The pipeline returns the top 10 products ranked by inventory turnover.
 
 The highest turnover products include:
@@ -553,6 +563,10 @@ The stockout analysis uses the last complete quarter relative to the reference d
 ```text
 2026-01-01 to 2026-03-31
 ```
+
+For this challenge, "last quarter" is interpreted as the most recent complete calendar quarter. Because the reference date is the final day of Q1 2026, that quarter is considered complete and is included.
+
+Consecutive days must be consecutive calendar dates for the same store-product combination. A missing inventory observation or a known non-zero inventory value breaks the sequence.
 
 A stockout event requires more than three consecutive days of known zero inventory.
 
@@ -578,6 +592,18 @@ Missing inventory observations are not classified as stockouts.
 
 Monthly sales are calculated separately for the physical and ecommerce channels.
 
+For this challenge, "last year" is interpreted as the latest 12 calendar months ending in the reference month, from April 2025 through March 2026.
+
+Month-over-month growth is calculated as:
+
+```text
+(current month revenue - previous month revenue)
+------------------------------------------------ × 100
+              previous month revenue
+```
+
+The immediately preceding calendar month is used when available, even if it falls outside the 12-month reporting window. If a channel has no data for that preceding month, its MoM growth remains unknown rather than assuming zero revenue.
+
 The analytical output contains:
 
 ```text
@@ -598,6 +624,14 @@ The physical channel has historical data before the 12-month reporting window, s
 Ecommerce data begins in April 2025, so the first ecommerce month correctly has no previous-month value and therefore no month-over-month growth percentage.
 
 ### Q4 - Negative-Margin Products
+
+For this challenge, a product is considered to have a negative margin at a store when the aggregate margin for that product-store combination is below zero:
+
+```text
+margin = revenue - COGS
+```
+
+Only physical sales with a store attribution are evaluated because the question asks where the negative margin occurs. Transactions without a known historical product cost are excluded from the margin calculation rather than assigning them a zero cost. This prevents incomplete cost history from artificially increasing reported margins.
 
 Margin analysis is performed only where historical product cost is known.
 
