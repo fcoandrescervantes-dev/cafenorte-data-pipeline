@@ -18,6 +18,17 @@ The solution produces a unified analytical model that supports business analysis
 
 The pipeline is implemented in Python using pandas and PyArrow and includes automated validation with pytest.
 
+## Technology Choices
+
+The implementation intentionally uses a lightweight Python stack proportional to the size and scope of the challenge.
+
+- **Python 3.11** provides a simple and widely supported environment for implementing the complete pipeline and analytical logic.
+- **pandas** was selected because the challenge datasets fit comfortably in memory and the required transformations, joins, aggregations, and validations do not require a distributed processing framework.
+- **PyArrow / Parquet** is used for efficient columnar persistence of the analytical model and for compatibility with the provided ecommerce Parquet source.
+- **pytest** provides automated validation of ingestion, transformations, reconciliation, analytical calculations, and important data-quality rules.
+
+I intentionally did not introduce Spark, a database server, an orchestration platform, or other distributed infrastructure into the local solution because the current data volume does not justify that additional complexity. The production AWS proposal separately describes how the solution could evolve as data volume, refresh frequency, or analytical concurrency increases.
+
 ---
 
 ## Business Questions
